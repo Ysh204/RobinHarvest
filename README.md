@@ -2,7 +2,7 @@
 
 RobinHarvest is a modern Web3 DeFi dashboard and yield aggregator interface built with Next.js. It provides users with a seamless, intuitive experience to manage their crypto portfolio, interact with smart contract vaults (such as Yearn V3 and Beefy), and track their yield farming performance.
 
-## 🌟 Features
+## Features
 
 - **Modern Tech Stack**: Built with Next.js 14 (App Router), React, TypeScript, and Tailwind CSS.
 - **Web3 Integration**: Seamless wallet connection and blockchain interactions powered by `wagmi` and `viem`.
@@ -10,7 +10,7 @@ RobinHarvest is a modern Web3 DeFi dashboard and yield aggregator interface buil
 - **Yield Vaults**: Interface to deposit, withdraw, and track performance across various DeFi vaults.
 - **Portfolio Tracking**: Real-time insights into user balances, transactions, and historical performance.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -43,7 +43,7 @@ RobinHarvest is a modern Web3 DeFi dashboard and yield aggregator interface buil
 
 5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-## 🏗️ Project Structure
+## Project Structure
 
 - `/app`: Next.js App Router pages and layouts.
 - `/components`: Reusable UI components (including `shadcn/ui` components in `/components/ui`).
@@ -53,7 +53,7 @@ RobinHarvest is a modern Web3 DeFi dashboard and yield aggregator interface buil
 - `/public`: Static assets like images and fonts.
 - `/types`: TypeScript interfaces and type definitions.
 
-## 🛠️ Built With
+## Built With
 
 - [Next.js](https://nextjs.org/)
 - [React](https://reactjs.org/)
@@ -62,6 +62,6 @@ RobinHarvest is a modern Web3 DeFi dashboard and yield aggregator interface buil
 - [shadcn/ui](https://ui.shadcn.com/)
 - [Wagmi](https://wagmi.sh/) & [Viem](https://viem.sh/)
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.
