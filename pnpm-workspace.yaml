@@ -1,0 +1,10 @@
+packages:
+  - .
+
+allowBuilds:
+  sharp: true
+
+overrides:
+  hono: 4.12.25
+  '@wagmi/connectors': 8.0.24
+  '@wagmi/core': 3.6.3
