@@ -34,6 +34,7 @@ export function useVaults(addressOverride?: Address) {
         { address: vault.address, abi: robinVaultAbi, functionName: 'totalSupply' as const },
         { address: vault.address, abi: robinVaultAbi, functionName: 'depositCap' as const },
         { address: vault.address, abi: robinVaultAbi, functionName: 'paused' as const },
+        { address: vault.address, abi: robinVaultAbi, functionName: 'decimals' as const },
         ...(user
           ? [
               {
@@ -41,12 +42,6 @@ export function useVaults(addressOverride?: Address) {
                 abi: robinVaultAbi,
                 functionName: 'balanceOf' as const,
                 args: [user],
-              },
-              {
-                address: vault.address,
-                abi: robinVaultAbi,
-                functionName: 'convertToAssets' as const,
-                args: [10n ** 18n],
               },
             ]
           : []),
@@ -61,23 +56,23 @@ export function useVaults(addressOverride?: Address) {
   })
 
   const snapshots = useMemo(() => {
-    const stride = user ? 6 : 4
+    const stride = user ? 6 : 5
     return VAULTS.map((vault, index): VaultSnapshot => {
       const offset = index * stride
-      const totalAssets = numeric(query.data?.[offset]?.result)
-      const totalSupply = numeric(query.data?.[offset + 1]?.result)
+      const decimals = (query.data?.[offset + 4]?.result as number) ?? 18
+      const totalAssets = numeric(query.data?.[offset]?.result, 18) // Underlying assets are always 18 decimals (INDEX/WETH)
+      const totalSupply = numeric(query.data?.[offset + 1]?.result, decimals)
+      const shareBalance = user ? numeric(query.data?.[offset + 5]?.result, decimals) : undefined
+      const pricePerShare = totalAssets && totalSupply ? totalAssets / totalSupply : 1
+      
       return {
         vault,
         totalAssets,
         totalSupply,
-        depositCap: numeric(query.data?.[offset + 2]?.result),
+        depositCap: numeric(query.data?.[offset + 2]?.result, 18),
         paused: query.data?.[offset + 3]?.result as boolean | undefined,
-        shareBalance: user ? numeric(query.data?.[offset + 4]?.result) : undefined,
-        pricePerShare: user
-          ? numeric(query.data?.[offset + 5]?.result)
-          : totalAssets && totalSupply
-            ? totalAssets / totalSupply
-            : undefined,
+        shareBalance,
+        pricePerShare,
         apy: apys[index],
       }
     })
