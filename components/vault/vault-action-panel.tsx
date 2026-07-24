@@ -19,13 +19,18 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
   const { address, isConnected } = useAccount()
   const [amount, setAmount] = useState('')
   const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit')
-  const parsed = useMemo(() => { try { return parseUnits(amount || '0', 18) } catch { return 0n } }, [amount])
+  const vaultDecimalsQuery = useReadContract({ chainId: ROBINHOOD_CHAIN_ID, address: vault.address, abi: robinVaultAbi, functionName: 'decimals' })
+  const shareDecimals = vaultDecimalsQuery.data ?? 18
+  const currentDecimals = mode === 'deposit' ? 18 : shareDecimals
+
+  const parsed = useMemo(() => { try { return parseUnits(amount || '0', currentDecimals) } catch { return 0n } }, [amount, currentDecimals])
   const allowance = useReadContract({ chainId: ROBINHOOD_CHAIN_ID, address: vault.asset, abi: erc20Abi, functionName: 'allowance', args: address ? [address, vault.address] : undefined, query: { enabled: Boolean(address) } })
   const assetBalance = useReadContract({ chainId: ROBINHOOD_CHAIN_ID, address: vault.asset, abi: erc20Abi, functionName: 'balanceOf', args: address ? [address] : undefined, query: { enabled: Boolean(address) } })
   const shareBalance = useReadContract({ chainId: ROBINHOOD_CHAIN_ID, address: vault.address, abi: erc20Abi, functionName: 'balanceOf', args: address ? [address] : undefined, query: { enabled: Boolean(address) } })
   
   const currentBalance = mode === 'deposit' ? assetBalance.data : shareBalance.data
   const currentSymbol = mode === 'deposit' ? vault.assetSymbol : vault.shareSymbol
+  const receiveSymbol = mode === 'deposit' ? vault.shareSymbol : vault.assetSymbol
 
   const writer = useWriteContract()
   const receipt = useWaitForTransactionReceipt({ hash: writer.data })
@@ -69,13 +74,13 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
               {isConnected && (
                 <button
                   type="button"
-                  onClick={() => currentBalance !== undefined && setAmount((Number(currentBalance) / 1e18).toString())}
+                  onClick={() => currentBalance !== undefined && setAmount((Number(currentBalance) / (10 ** currentDecimals)).toString())}
                   className="text-xs text-muted-foreground hover:text-primary transition-colors"
                 >
                   Balance: {
                     assetBalance.error ? 'Error!' : 
                     shareBalance.error ? 'Error!' : 
-                    currentBalance !== undefined ? (Number(currentBalance) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 4 }) : 'Loading...'
+                    currentBalance !== undefined ? (Number(currentBalance) / (10 ** currentDecimals)).toLocaleString(undefined, { maximumFractionDigits: 4 }) : 'Loading...'
                   } {currentSymbol}
                 </button>
               )}
@@ -87,7 +92,7 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
             )}
             <div className="relative"><Input id="amount" inputMode="decimal" placeholder="0.00" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-14 pr-28 text-lg tabular" /><span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">{currentSymbol}</span></div>
           </div>
-          <div className="flex items-center justify-between gap-4 text-sm"><span className="text-muted-foreground">You receive</span><span className="tabular">≈ {amount || '0'} {vault.shareSymbol}</span></div>
+          <div className="flex items-center justify-between gap-4 text-sm"><span className="text-muted-foreground">You receive</span><span className="tabular">≈ {amount || '0'} {receiveSymbol}</span></div>
           {!isConnected ? <ConnectWallet className="w-full" /> : <Button className="w-full" size="lg" disabled={parsed <= 0n || paused || writer.isPending || receipt.isLoading} onClick={submit}>{paused ? 'Vault paused' : writer.isPending ? 'Confirm in wallet' : receipt.isLoading ? 'Confirming' : needsApproval ? `Approve ${vault.assetSymbol}` : mode === 'deposit' ? 'Deposit' : 'Withdraw'}</Button>}
           <p className="text-xs leading-relaxed text-muted-foreground">Robin Harvest never takes custody. Review the wallet simulation before signing. Network fees apply.</p>
         </TabsContent>
