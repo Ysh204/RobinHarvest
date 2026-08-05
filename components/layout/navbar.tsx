@@ -57,10 +57,10 @@ function NavLink({
       onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'px-4 py-2 text-base font-medium transition-colors duration-200',
+        'px-3 py-1.5 text-xs font-medium tracking-wide transition-colors duration-200 rounded-md',
         active
-          ? 'text-white font-semibold'
-          : 'text-zinc-400 hover:text-white',
+          ? 'text-primary font-semibold bg-primary/5'
+          : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.02]',
       )}
     >
       {label}
@@ -72,24 +72,27 @@ export function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-zinc-800/60 bg-black/90 backdrop-blur-xl">
-      <div className="flex h-20 w-full items-center justify-between gap-6 px-6 md:px-12">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md transition-all">
+      <div className="flex h-14 w-full items-center justify-between gap-6 px-6 md:px-12 lg:px-16">
         
-        {/* Left: Reverted Logo Dimensions */}
-        <div className="flex items-center gap-10 md:gap-14">
-          <Link href="/" className="group flex items-center transition-transform duration-200 hover:scale-[1.01]" aria-label="Robin Harvest home">
+        {/* Left: Clean Minimalist Logo & Title */}
+        <div className="flex items-center gap-8 md:gap-10">
+          <Link href="/" className="group flex items-center gap-2.5 transition-opacity duration-200 hover:opacity-85" aria-label="Robin Harvest home">
             <Image
-              src="/header-full-logo.png"
+              src="/logo.jpg"
               alt="Robin Harvest Logo"
-              width={802}
-              height={216}
+              width={64}
+              height={64}
               priority
-              className="h-8 w-auto object-contain md:h-10 lg:h-12"
+              className="size-8 rounded-lg object-contain shadow-sm border border-white/[0.08]"
             />
+            <span className="font-display text-base font-bold tracking-tight text-foreground flex items-center">
+              Robin<span className="text-primary font-medium">Harvest</span>
+            </span>
           </Link>
 
-          {/* Desktop Nav Links (Clean text links) */}
-          <nav aria-label="Main" className="hidden items-center gap-2 md:flex">
+          {/* Desktop Nav Links (Clean compact links) */}
+          <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
             {NAV_ITEMS.map((item) => (
               <NavLink key={item.href} href={item.href} label={item.label} />
             ))}

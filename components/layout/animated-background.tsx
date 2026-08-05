@@ -1,26 +1,33 @@
 /**
- * GPU-friendly ambient background: two slowly drifting radial glows in the
- * brand greens plus a faint grid. Pure CSS (no JS animation loop), respects
- * prefers-reduced-motion via the global media query in globals.css.
+ * GPU-friendly ambient background with rich multi-layer radial glows and an institutional grid overlay.
+ * Designed to give the terminal a living, dynamic feel while maintaining high performance.
  */
 export function AnimatedBackground() {
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-background">
+      {/* Primary Emerald Glow (Top Left) */}
       <div
-        className="absolute -top-40 left-1/4 size-[36rem] rounded-full opacity-[0.07] blur-3xl motion-safe:animate-pulse"
-        style={{ background: 'var(--primary)', animationDuration: '9s' }}
+        className="absolute -top-48 -left-24 size-[44rem] rounded-full opacity-[0.09] blur-[100px] motion-safe:animate-pulse"
+        style={{ background: 'oklch(0.6 0.2 155)', animationDuration: '8s' }}
       />
+      {/* Secondary Mint Glow (Middle Right) */}
       <div
-        className="absolute -bottom-48 right-1/5 size-[30rem] rounded-full opacity-[0.06] blur-3xl motion-safe:animate-pulse"
-        style={{ background: 'var(--accent)', animationDuration: '12s', animationDelay: '3s' }}
+        className="absolute top-1/3 -right-32 size-[38rem] rounded-full opacity-[0.07] blur-[120px] motion-safe:animate-pulse"
+        style={{ background: 'oklch(0.55 0.18 160)', animationDuration: '11s', animationDelay: '2s' }}
       />
+      {/* Deep Accent Glow (Bottom Center) */}
       <div
-        className="absolute inset-0 opacity-[0.35]"
+        className="absolute -bottom-48 left-1/3 size-[40rem] rounded-full opacity-[0.06] blur-[110px] motion-safe:animate-pulse"
+        style={{ background: 'oklch(0.5 0.15 150)', animationDuration: '14s', animationDelay: '4s' }}
+      />
+      {/* Institutional Technical Grid with Radial Fade */}
+      <div
+        className="absolute inset-0 opacity-[0.25]"
         style={{
           backgroundImage:
             'linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)',
-          backgroundSize: '72px 72px',
-          maskImage: 'radial-gradient(ellipse 90% 60% at 50% 0%, black 20%, transparent 75%)',
+          backgroundSize: '64px 64px',
+          maskImage: 'radial-gradient(ellipse 95% 75% at 50% 10%, black 20%, transparent 85%)',
         }}
       />
     </div>

@@ -1,41 +1,284 @@
 'use client'
 
-import { ArrowLeft, ExternalLink, Gauge, Info, ShieldCheck, WalletCards } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Gauge, Info, ShieldCheck, WalletCards, Zap } from 'lucide-react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { useAccount, useWriteContract } from 'wagmi'
+import { toast } from 'sonner'
 import type { VaultConfig } from '@/config/contracts'
 import { explorerAddressUrl } from '@/config/chain'
 import { useVault } from '@/hooks/use-vaults'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { strategyAbi } from '@/lib/abis/strategy'
 import { PerformanceChart } from './performance-chart'
 import { VaultActionPanel } from './vault-action-panel'
+
+function StrategyControls({ vault }: { vault: VaultConfig }) {
+  const { isConnected } = useAccount()
+  const writer = useWriteContract()
+
+  async function handleAction(actionName: 'harvest' | 'rebalance' | 'tend') {
+    if (!isConnected) {
+      toast.error('Wallet not connected', { description: 'Please connect your wallet to execute strategy operations.' })
+      return
+    }
+    try {
+      await writer.writeContractAsync({
+        address: vault.strategy,
+        abi: strategyAbi,
+        functionName: actionName,
+      } as any)
+      toast.success(`Strategy ${actionName.toUpperCase()} submitted to network`)
+    } catch (err) {
+      toast.error(`Failed to execute ${actionName}`, {
+        description: err instanceof Error ? err.message.split('\n')[0] : 'Transaction rejected or reverted.'
+      })
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.15 }}
+      className="flex flex-col gap-4 p-5 rounded-xl bg-card/50 border border-border/60 backdrop-blur-md shadow-xs hover:border-primary/30 transition-colors"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+            <Zap className="size-4 fill-primary" />
+          </div>
+          <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
+            {vault.isV4 ? 'Uniswap v4 CL Strategy Operations' : 'Automated Strategy Controls'}
+          </h3>
+        </div>
+        <a
+          href={explorerAddressUrl(vault.strategy)}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 w-fit"
+        >
+          Strategy: {vault.strategy.slice(0, 6)}...{vault.strategy.slice(-4)} <ExternalLink className="size-3" />
+        </a>
+      </div>
+
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        {vault.isV4
+          ? 'Interact directly with the Uniswap v4 Concentrated Liquidity strategy. Trigger automated rebalances to reposition liquidity across optimal tick bounds (Tick Spacing: 60) with EIP-1153 flash accounting, or harvest accrued pool trading fees.'
+          : 'Anyone on the Robinhood testnet can permissionlessly invoke strategy maintenance and reward batch compounding.'}
+      </p>
+
+      {/* Uniswap v4 specific parameters grid */}
+      {vault.isV4 && vault.v4Details && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 py-3 border-y border-border/20 text-xs">
+          <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
+            <span className="text-muted-foreground text-[10px] uppercase font-bold">V4 Pool Manager</span>
+            <span className="font-mono text-foreground font-semibold text-[11px] truncate">
+              {vault.v4Details.poolManager.slice(0, 6)}...{vault.v4Details.poolManager.slice(-4)}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
+            <span className="text-muted-foreground text-[10px] uppercase font-bold">Position Manager</span>
+            <span className="font-mono text-foreground font-semibold text-[11px] truncate">
+              {vault.v4Details.positionManager.slice(0, 6)}...{vault.v4Details.positionManager.slice(-4)}
+            </span>
+          </div>
+          <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
+            <span className="text-muted-foreground text-[10px] uppercase font-bold">Pool Fee Tier</span>
+            <span className="font-mono text-primary font-bold text-xs">{vault.v4Details.feeTier}</span>
+          </div>
+          <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
+            <span className="text-muted-foreground text-[10px] uppercase font-bold">Tick Spacing</span>
+            <span className="font-mono text-foreground font-bold text-xs">{vault.v4Details.tickSpacing}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
+        {vault.isV4 && (
+          <Button
+            size="sm"
+            onClick={() => handleAction('rebalance')}
+            disabled={writer.isPending}
+            className="text-xs h-9 px-4 gap-1.5 font-bold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Zap className="size-3.5 fill-current" /> Execute v4 Rebalance
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleAction('harvest')}
+          disabled={writer.isPending}
+          className="text-xs h-9 px-4 gap-1.5 border-border/80 bg-white/[0.02] hover:bg-white/[0.06] font-semibold"
+        >
+          🌾 Harvest & Compound
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleAction('tend')}
+          disabled={writer.isPending}
+          className="text-xs h-9 px-3 text-muted-foreground hover:text-foreground font-medium sm:ml-auto"
+        >
+          🔧 Tend Position
+        </Button>
+      </div>
+    </motion.div>
+  )
+}
 
 export function VaultDetail({ vault }: { vault: VaultConfig }) {
   const { snapshot, isLoading } = useVault(vault.address)
   const tvl = snapshot?.totalAssets ?? 0
   const cap = snapshot?.depositCap ?? 0
   const capacity = cap ? Math.min((tvl / cap) * 100, 100) : 0
-  return <div className="flex flex-col gap-8">
-    <Button nativeButton={false} render={<Link href="/" />} variant="ghost" className="w-fit"><ArrowLeft data-icon="inline-start" />All vaults</Button>
-    <section className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-      <div className="flex max-w-3xl flex-col gap-4"><div className="flex flex-wrap items-center gap-2"><Badge variant="secondary">{snapshot?.paused ? 'Paused' : 'Active'}</Badge><Badge variant="outline">{vault.risk} risk</Badge><Badge variant="outline">ERC-4626</Badge></div><h1 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">{vault.name}</h1><p className="text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">{vault.description}</p></div>
-      <Button nativeButton={false} render={<a href={explorerAddressUrl(vault.address)} target="_blank" rel="noreferrer" />} variant="outline">View contract <ExternalLink data-icon="inline-end" /></Button>
-    </section>
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-      <div className="flex min-w-0 flex-col gap-6">
-        <section className="grid grid-cols-2 gap-3 md:grid-cols-4">{[
-          ['Est. APY', `${snapshot?.apy.toFixed(2) ?? '—'}%`, Gauge],
-          ['Total assets', isLoading ? 'Loading' : `${tvl.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${vault.assetSymbol}`, WalletCards],
-          ['Share price', `${snapshot?.pricePerShare?.toFixed(4) ?? '—'} ${vault.assetSymbol}`, Info],
-          ['Risk profile', vault.risk, ShieldCheck],
-        ].map(([label, value, Icon]) => <Card key={label as string}><CardContent className="flex flex-col gap-3 p-5"><Icon className="text-primary" aria-hidden /><span className="text-xs uppercase tracking-wider text-muted-foreground">{label as string}</span><strong className="text-base capitalize tabular">{value as string}</strong></CardContent></Card>)}</section>
-        <Card><CardHeader><div className="flex items-start justify-between gap-4"><div><CardTitle>Vault performance</CardTitle><CardDescription>30-day indicative history anchored to current onchain TVL.</CardDescription></div><Badge variant="outline">30D</Badge></div></CardHeader><CardContent><PerformanceChart address={vault.address} currentTvl={tvl} /></CardContent></Card>
-        <Card><CardHeader><CardTitle>Capacity & strategy</CardTitle><CardDescription>How this vault deploys deposited capital.</CardDescription></CardHeader><CardContent className="flex flex-col gap-6"><div className="flex flex-col gap-2"><div className="flex items-center justify-between gap-4 text-sm"><span>Capacity used</span><span className="tabular text-muted-foreground">{cap ? `${capacity.toFixed(1)}%` : 'Cap unavailable'}</span></div><Progress value={capacity} /></div><div className="grid gap-4 md:grid-cols-3">{[['Strategy', vault.strategyLabel], ['Asset', vault.assetSymbol], ['Compounding', 'Automated']].map(([label, value]) => <div key={label} className="rounded-xl border border-border bg-muted/30 p-4"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 font-medium">{value}</p></div>)}</div></CardContent></Card>
-        <Card><CardHeader><CardTitle>Know the risks</CardTitle></CardHeader><CardContent><p className="text-sm leading-relaxed text-muted-foreground">Smart contracts, underlying strategies, liquidity, and testnet infrastructure can fail. Estimated APY is variable and not guaranteed. Only deposit assets you can afford to keep exposed to these risks.</p></CardContent></Card>
+
+  return (
+    <div className="flex flex-col w-full">
+      {/* Full-Width Vault Header Banner */}
+      <section className="w-full border-b border-border/40 bg-gradient-to-b from-white/[0.03] to-transparent px-4 sm:px-6 md:px-12 lg:px-16 py-8 md:py-10">
+        <div className="flex flex-col gap-4 w-full">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors w-fit">
+            <ArrowLeft className="size-3.5" /> All Strategy Vaults
+          </Link>
+
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between w-full"
+          >
+            <div className="flex flex-col gap-2.5 max-w-3xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-border/60 text-[11px] font-bold text-foreground shadow-xs">
+                  {snapshot?.paused ? 'Paused' : 'Active'}
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                  vault.risk === 'low' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                  vault.risk === 'medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                  'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                }`}>
+                  {vault.risk.toUpperCase()} RISK
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full bg-white/[0.03] border border-border/60 text-[11px] font-mono font-semibold text-muted-foreground">
+                  ERC-4626
+                </span>
+                {vault.isV4 && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-primary/15 border border-primary/30 text-[11px] font-extrabold text-primary flex items-center gap-1 shadow-xs">
+                    <Zap className="size-3 fill-primary" /> Uniswap v4 CL
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground">{vault.name}</h1>
+              <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">{vault.description}</p>
+            </div>
+            <a
+              href={explorerAddressUrl(vault.address)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-muted-foreground hover:text-foreground border border-border/60 rounded-xl px-4 py-2.5 bg-card/50 hover:border-primary/30 transition-all w-fit shadow-xs shrink-0 mt-1 lg:mt-0"
+            >
+              Vault: {vault.address.slice(0, 8)}...{vault.address.slice(-6)} <ExternalLink className="size-3 text-primary" />
+            </a>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Centered Compact Vault Content Area */}
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-8 md:py-10">
+        <div className="grid gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="flex min-w-0 flex-col gap-6 sm:gap-8">
+            {/* Executive Stats Row */}
+            <motion.section
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+            >
+              {[
+                ['Est. APY', `${snapshot?.apy.toFixed(2) ?? '—'}%`, Gauge],
+                ['Total assets', isLoading ? 'Loading...' : `${tvl.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${vault.assetSymbol}`, WalletCards],
+                ['Share price', `${snapshot?.pricePerShare?.toFixed(4) ?? '1.0000'} ${vault.assetSymbol}`, Info],
+                ['Risk profile', vault.risk, ShieldCheck],
+              ].map(([label, value, Icon]) => (
+                <div key={label as string} className="p-4 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm flex flex-col gap-1.5 hover:border-primary/30 transition-colors shadow-xs">
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span className="text-[11px] uppercase font-bold tracking-wider">{label as string}</span>
+                    <Icon className="size-3.5 text-primary" aria-hidden />
+                  </div>
+                  <strong className="text-sm sm:text-base font-extrabold text-foreground font-mono tabular capitalize">{value as string}</strong>
+                </div>
+              ))}
+            </motion.section>
+
+            {/* Strategy Operations Panel with Uniswap v4 buttons */}
+            <StrategyControls vault={vault} />
+
+            {/* Performance Chart */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="p-5 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm flex flex-col gap-4 shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Vault Performance (30D)</h3>
+                  <p className="text-xs text-muted-foreground">Indicative history anchored to current onchain TVL.</p>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-mono border border-border/60 bg-white/[0.02] text-muted-foreground font-bold">30D</span>
+              </div>
+              <PerformanceChart address={vault.address} currentTvl={tvl} />
+            </motion.div>
+
+            {/* Capacity & Strategy Info */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.25 }}
+              className="p-5 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm flex flex-col gap-5 shadow-xs"
+            >
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Capacity & Architecture</h3>
+                <p className="text-xs text-muted-foreground">How this vault deploys and compounds deposited capital.</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-4 text-xs">
+                  <span className="text-muted-foreground font-semibold">Capacity used</span>
+                  <span className="tabular font-mono text-foreground font-bold">{cap ? `${capacity.toFixed(1)}%` : 'Unlimited / No Cap Data'}</span>
+                </div>
+                <Progress value={capacity} className="h-2" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  ['Strategy', vault.strategyLabel],
+                  ['Underlying Asset', vault.assetSymbol],
+                  ['Protocol Integration', vault.protocolLabel || 'Index Finance'],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-lg border border-border/40 bg-white/[0.015] p-3 flex flex-col gap-1">
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground">{label}</p>
+                    <p className="font-semibold text-xs text-foreground truncate">{value}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Sticky Action Panel (Deposit/Withdraw) */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+            className="lg:sticky lg:top-20 h-fit"
+          >
+            <VaultActionPanel vault={vault} paused={snapshot?.paused} />
+          </motion.div>
+        </div>
       </div>
-      <VaultActionPanel vault={vault} paused={snapshot?.paused} />
     </div>
-  </div>
+  )
 }
+
