@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { strategyAbi } from '@/lib/abis/strategy'
+import { saveTransaction } from '@/lib/utils/tx-history'
 import { PerformanceChart } from './performance-chart'
 import { VaultActionPanel } from './vault-action-panel'
 
@@ -25,11 +26,19 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
       return
     }
     try {
-      await writer.writeContractAsync({
+      const hash = await writer.writeContractAsync({
         address: vault.strategy,
         abi: strategyAbi,
         functionName: actionName,
       } as any)
+      saveTransaction({
+        hash,
+        kind: actionName,
+        status: 'confirmed',
+        vault: vault.address,
+        amount: actionName === 'harvest' ? 'Yields' : actionName === 'rebalance' ? 'Tick Pool' : 'Check',
+        symbol: vault.shareSymbol,
+      })
       toast.success(`Strategy ${actionName.toUpperCase()} submitted to network`)
     } catch (err) {
       toast.error(`Failed to execute ${actionName}`, {

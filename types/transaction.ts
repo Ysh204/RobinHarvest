@@ -7,6 +7,10 @@ export type TransactionKind =
   | 'withdraw'
   | 'redeem'
   | 'redeemInKind'
+  | 'rebalance'
+  | 'harvest'
+  | 'tend'
+  | 'faucet'
 
 export type TransactionStatus = 'pending' | 'confirmed' | 'failed'
 

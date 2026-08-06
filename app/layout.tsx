@@ -51,7 +51,7 @@ export default function RootLayout({
       className={`dark bg-background ${inter.variable} ${outfit.variable}`}
       suppressHydrationWarning
     >
-      <body className="flex min-h-svh flex-col antialiased">
+      <body className="flex min-h-svh flex-col antialiased" suppressHydrationWarning>
         <Providers>
           <AnimatedBackground />
           <Navbar />

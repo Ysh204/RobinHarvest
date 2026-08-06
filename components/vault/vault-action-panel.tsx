@@ -14,6 +14,7 @@ import { erc20Abi } from '@/lib/abis/erc20'
 import { robinVaultAbi } from '@/lib/abis/robin-vault'
 import { ROBINHOOD_CHAIN_ID } from '@/config/chain'
 import type { VaultConfig } from '@/config/contracts'
+import { saveTransaction } from '@/lib/utils/tx-history'
 
 export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused?: boolean }) {
   const { address, isConnected } = useAccount()
@@ -35,6 +36,11 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
   const writer = useWriteContract()
   const receipt = useWaitForTransactionReceipt({ hash: writer.data })
   const needsApproval = mode === 'deposit' && (allowance.data ?? 0n) < parsed
+
+  const mintAbi = useMemo(() => [
+    { type: 'function', name: 'mint', inputs: [{ name: 'account', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+  ] as const, [])
+
   // Auto-refetch when receipt is confirmed
   useEffect(() => {
     if (receipt.isSuccess) {
@@ -44,17 +50,36 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
     }
   }, [receipt.isSuccess, allowance, assetBalance, shareBalance])
 
+  async function claimFaucet() {
+    if (!address) return
+    try {
+      const hash = await writer.writeContractAsync({
+        address: vault.asset,
+        abi: mintAbi,
+        functionName: 'mint',
+        args: [address, parseUnits('10000', 18)],
+      })
+      saveTransaction({ hash, kind: 'faucet', status: 'confirmed', vault: vault.address, amount: '10,000', symbol: vault.assetSymbol })
+      toast.success('Testnet Faucet Claim Submitted!', { description: 'Minting 10,000 test tokens to your wallet.' })
+    } catch (error) {
+      toast.error('Faucet request failed', { description: error instanceof Error ? error.message.split('\n')[0] : 'Could not mint test tokens.' })
+    }
+  }
+
   async function submit() {
     if (!address || parsed <= 0n) return
     try {
       if (needsApproval) {
-        await writer.writeContractAsync({ address: vault.asset, abi: erc20Abi, functionName: 'approve', args: [vault.address, parsed] })
+        const hash = await writer.writeContractAsync({ address: vault.asset, abi: erc20Abi, functionName: 'approve', args: [vault.address, parsed] })
+        saveTransaction({ hash, kind: 'approve', status: 'confirmed', vault: vault.address, amount: amount || '0', symbol: vault.assetSymbol })
         toast.success('Approval submitted', { description: 'Wait for confirmation, then deposit.' })
       } else if (mode === 'deposit') {
-        await writer.writeContractAsync({ address: vault.address, abi: robinVaultAbi, functionName: 'deposit', args: [parsed, address] })
+        const hash = await writer.writeContractAsync({ address: vault.address, abi: robinVaultAbi, functionName: 'deposit', args: [parsed, address] })
+        saveTransaction({ hash, kind: 'deposit', status: 'confirmed', vault: vault.address, amount: amount || '0', symbol: vault.assetSymbol })
         toast.success('Deposit submitted')
       } else {
-        await writer.writeContractAsync({ address: vault.address, abi: robinVaultAbi, functionName: 'withdraw', args: [parsed, address, address] })
+        const hash = await writer.writeContractAsync({ address: vault.address, abi: robinVaultAbi, functionName: 'withdraw', args: [parsed, address, address] })
+        saveTransaction({ hash, kind: 'withdraw', status: 'confirmed', vault: vault.address, amount: amount || '0', symbol: vault.shareSymbol })
         toast.success('Withdrawal submitted')
       }
     } catch (error) {
@@ -105,6 +130,18 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
             <span className="text-muted-foreground">Est. Receive</span>
             <span className="tabular font-medium text-foreground">≈ {amount || '0.00'} {receiveSymbol}</span>
           </div>
+          {isConnected && mode === 'deposit' && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={claimFaucet}
+              disabled={writer.isPending || receipt.isLoading}
+              className="w-full h-9 text-xs font-semibold gap-1.5 border-primary/30 text-primary bg-primary/5 hover:bg-primary/15 transition-all shadow-xs"
+            >
+              🚰 Faucet: Claim 10,000 Test {vault.assetSymbol}
+            </Button>
+          )}
           {!isConnected ? <ConnectWallet className="w-full text-xs h-10" /> : <Button className="w-full text-xs font-semibold h-10 shadow-sm" disabled={parsed <= 0n || paused || writer.isPending || receipt.isLoading} onClick={submit}>{paused ? 'Vault Paused' : writer.isPending ? 'Confirm in Wallet...' : receipt.isLoading ? 'Confirming Tx...' : needsApproval ? `Approve ${vault.assetSymbol}` : mode === 'deposit' ? 'Deposit Capital' : 'Withdraw Shares'}</Button>}
           <p className="text-[11px] leading-relaxed text-muted-foreground pt-1 border-t border-border/20 text-center">
             Non-custodial execution. Review simulation before signing.
