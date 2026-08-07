@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { parseUnits } from 'viem'
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
 import { toast } from 'sonner'
+import { PlusCircle } from 'lucide-react'
 import { ConnectWallet } from '@/components/wallet/connect-wallet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -87,6 +88,39 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
     }
   }
 
+  const { data: onChainSymbol } = useReadContract({
+    address: mode === 'deposit' ? vault.asset : vault.address,
+    abi: erc20Abi,
+    functionName: 'symbol',
+  })
+
+  const { data: onChainDecimals } = useReadContract({
+    address: mode === 'deposit' ? vault.asset : vault.address,
+    abi: erc20Abi,
+    functionName: 'decimals',
+  })
+
+  async function watchAsset() {
+    if (typeof window === 'undefined' || !(window as any).ethereum) return
+    try {
+      await (window as any).ethereum.request({
+        method: 'wallet_watchAsset',
+        params: {
+          type: 'ERC20',
+          options: {
+            address: mode === 'deposit' ? vault.asset : vault.address,
+            symbol: onChainSymbol ? String(onChainSymbol) : currentSymbol.slice(0, 11),
+            decimals: onChainDecimals ? Number(onChainDecimals) : currentDecimals,
+          },
+        },
+      })
+      toast.success(`Requested to add ${onChainSymbol || currentSymbol.slice(0, 11)} to your wallet`)
+    } catch (error: any) {
+      console.error("watchAsset error:", error)
+      toast.error(error?.message?.slice(0, 100) || `Could not add ${currentSymbol} to wallet`)
+    }
+  }
+
   return <Card className="border border-border/60 bg-card/60 backdrop-blur-md shadow-sm">
     <CardHeader className="pb-3 border-b border-border/30">
       <CardTitle className="text-sm font-medium uppercase tracking-wider text-foreground">Manage Position</CardTitle>
@@ -103,17 +137,27 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
             <div className="flex items-center justify-between text-xs">
               <Label htmlFor="amount" className="text-muted-foreground font-medium">Amount</Label>
               {isConnected && (
-                <button
-                  type="button"
-                  onClick={() => currentBalance !== undefined && setAmount((Number(currentBalance) / (10 ** currentDecimals)).toString())}
-                  className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
-                >
-                  Balance: {
-                    assetBalance.error ? 'Error!' : 
-                    shareBalance.error ? 'Error!' : 
-                    currentBalance !== undefined ? (Number(currentBalance) / (10 ** currentDecimals)).toLocaleString(undefined, { maximumFractionDigits: 4 }) : 'Loading...'
-                  } {currentSymbol}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => currentBalance !== undefined && setAmount((Number(currentBalance) / (10 ** currentDecimals)).toString())}
+                    className="text-xs font-mono text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+                  >
+                    Balance: {
+                      assetBalance.error ? 'Error!' : 
+                      shareBalance.error ? 'Error!' : 
+                      currentBalance !== undefined ? (Number(currentBalance) / (10 ** currentDecimals)).toLocaleString(undefined, { maximumFractionDigits: 4 }) : 'Loading...'
+                    } {currentSymbol}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={watchAsset}
+                    title={`Add ${currentSymbol} to wallet`}
+                    className="text-muted-foreground hover:text-primary transition-colors bg-white/[0.02] border border-border/40 hover:border-primary/40 rounded p-0.5"
+                  >
+                    <PlusCircle className="size-3" />
+                  </button>
+                </div>
               )}
             </div>
             {(assetBalance.error || shareBalance.error) && (
