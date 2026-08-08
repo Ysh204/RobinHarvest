@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { erc20Abi } from '@/lib/abis/erc20'
 import { robinVaultAbi } from '@/lib/abis/robin-vault'
@@ -21,6 +22,7 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
   const { address, isConnected } = useAccount()
   const [amount, setAmount] = useState('')
   const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit')
+  const [inKind, setInKind] = useState(false)
   const vaultDecimalsQuery = useReadContract({ chainId: ROBINHOOD_CHAIN_ID, address: vault.address, abi: robinVaultAbi, functionName: 'decimals' })
   const shareDecimals = vaultDecimalsQuery.data ?? 18
   const currentDecimals = mode === 'deposit' ? 18 : shareDecimals
@@ -79,9 +81,10 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
         saveTransaction({ hash, kind: 'deposit', status: 'confirmed', vault: vault.address, amount: amount || '0', symbol: vault.assetSymbol })
         toast.success('Deposit submitted')
       } else {
-        const hash = await writer.writeContractAsync({ address: vault.address, abi: robinVaultAbi, functionName: 'withdraw', args: [parsed, address, address] })
-        saveTransaction({ hash, kind: 'withdraw', status: 'confirmed', vault: vault.address, amount: amount || '0', symbol: vault.shareSymbol })
-        toast.success('Withdrawal submitted')
+        const fn = inKind ? 'redeemInKind' : 'redeem'
+        const hash = await writer.writeContractAsync({ address: vault.address, abi: robinVaultAbi, functionName: fn, args: [parsed, address, address] })
+        saveTransaction({ hash, kind: inKind ? 'redeemInKind' : 'redeem', status: 'confirmed', vault: vault.address, amount: amount || '0', symbol: vault.shareSymbol })
+        toast.success(inKind ? 'In-Kind Redemption submitted' : 'Withdrawal submitted')
       }
     } catch (error) {
       toast.error('Transaction not submitted', { description: error instanceof Error ? error.message.split('\n')[0] : 'Wallet request failed.' })
@@ -172,8 +175,18 @@ export function VaultActionPanel({ vault, paused }: { vault: VaultConfig; paused
           </div>
           <div className="flex items-center justify-between gap-4 text-xs p-2 rounded bg-white/[0.01] border border-border/40 font-mono">
             <span className="text-muted-foreground">Est. Receive</span>
-            <span className="tabular font-medium text-foreground">≈ {amount || '0.00'} {receiveSymbol}</span>
+            <span className="tabular font-medium text-foreground">
+              {inKind ? 'Basket of underlying assets' : `≈ ${amount || '0.00'} ${receiveSymbol}`}
+            </span>
           </div>
+          {mode === 'withdraw' && (
+            <div className="flex items-center gap-2 mt-1">
+              <Checkbox id="inKind" checked={inKind} onCheckedChange={(c) => setInKind(c as boolean)} className="border-border/60 data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary" />
+              <Label htmlFor="inKind" className="text-xs text-muted-foreground cursor-pointer font-medium">
+                Redeem In-Kind (Receive raw strategy assets directly)
+              </Label>
+            </div>
+          )}
           {isConnected && mode === 'deposit' && (
             <Button
               type="button"
