@@ -32,7 +32,7 @@ export function WrongNetwork() {
           </div>
           <DialogTitle>Wrong network</DialogTitle>
           <DialogDescription>
-            Robin Harvest runs on Robinhood Chain (ID 46630). Switch your wallet&apos;s network to
+            Robin Harvest runs on Robinhood Chain (ID {ROBINHOOD_CHAIN_ID}). Switch your wallet&apos;s network to
             continue.
           </DialogDescription>
         </DialogHeader>

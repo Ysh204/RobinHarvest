@@ -10,7 +10,8 @@ import { useVaults, type VaultSnapshot } from '@/hooks/use-vaults'
 const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 })
 
 function VaultRow({ item, loading, index }: { item: VaultSnapshot; loading: boolean; index: number }) {
-  const { vault, totalAssets, apy } = item
+  const { vault, totalAssets, apy, apyAvailable } = item
+  const apyLabel = apyAvailable && apy !== undefined ? `${apy.toFixed(2)}%` : 'Unavailable'
 
   return (
     <motion.div
@@ -26,7 +27,7 @@ function VaultRow({ item, loading, index }: { item: VaultSnapshot; loading: bool
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm text-foreground tracking-tight flex items-center gap-1.5 group-hover:text-primary transition-colors">
               {vault.name}
-              {vault.isV4 && (
+              {vault.isCl && (
                 <span className="inline-flex items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary border border-primary/30 shadow-xs">
                   <Zap className="size-2.5 fill-primary" /> v4 CL
                 </span>
@@ -57,7 +58,7 @@ function VaultRow({ item, loading, index }: { item: VaultSnapshot; loading: bool
         {/* APY */}
         <div className="col-span-2 flex flex-col">
           <span className="text-sm font-bold text-primary tabular font-mono flex items-center gap-1">
-            <TrendingUp className="size-3 text-primary" /> {apy.toFixed(2)}%
+            <TrendingUp className="size-3 text-primary" /> {apyLabel}
           </span>
         </div>
 
@@ -90,7 +91,7 @@ function VaultRow({ item, loading, index }: { item: VaultSnapshot; loading: bool
           <div className="flex flex-col gap-1">
             <div className="flex items-center flex-wrap gap-1.5">
               <span className="font-bold text-sm text-foreground">{vault.name}</span>
-              {vault.isV4 && (
+              {vault.isCl && (
                 <span className="inline-flex items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary border border-primary/30">
                   <Zap className="size-2.5 fill-primary" /> v4
                 </span>
@@ -111,7 +112,7 @@ function VaultRow({ item, loading, index }: { item: VaultSnapshot; loading: bool
           <div className="flex flex-col gap-0.5">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase">Est. APY</span>
             <span className="text-base font-bold text-primary tabular font-mono flex items-center gap-1">
-              <TrendingUp className="size-3.5 text-primary" /> {apy.toFixed(2)}%
+              <TrendingUp className="size-3.5 text-primary" /> {apyLabel}
             </span>
           </div>
           <div className="flex flex-col gap-0.5">
@@ -141,7 +142,10 @@ function VaultRow({ item, loading, index }: { item: VaultSnapshot; loading: bool
 export function Dashboard() {
   const { snapshots, isLoading, isError, refetch } = useVaults()
   const total = snapshots.reduce((sum, item) => sum + (item.totalAssets ?? 0), 0)
-  const weightedApy = snapshots.length ? snapshots.reduce((sum, item) => sum + item.apy, 0) / snapshots.length : 0
+  const weightedApy = snapshots.filter((s) => s.apyAvailable && s.apy !== undefined)
+  const avgApy = weightedApy.length
+    ? weightedApy.reduce((sum, item) => sum + (item.apy ?? 0), 0) / weightedApy.length
+    : undefined
 
   return (
     <div className="flex flex-col w-full">
@@ -156,7 +160,7 @@ export function Dashboard() {
           >
             <div className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full w-fit shadow-xs">
               <Radio className="size-3.5 text-emerald-400 animate-pulse shrink-0" />
-              <span>Robinhood Chain Testnet · EIP-1153 Flash Accounting</span>
+              <span>Robinhood Chain · ERC-4626 Vaults</span>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground leading-[1.1]">
               Yield Optimizer & <span className="text-primary bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">Uniswap v4 Strategies</span>
@@ -186,7 +190,7 @@ export function Dashboard() {
                 <Sparkles className="size-4 text-primary animate-spin" style={{ animationDuration: '6s' }} /> Avg. APY
               </span>
               <strong className="text-lg md:text-xl font-extrabold tabular text-primary font-mono">
-                {weightedApy.toFixed(2)}%
+                {avgApy !== undefined ? `${avgApy.toFixed(2)}%` : 'Unavailable'}
               </strong>
             </div>
           </motion.div>

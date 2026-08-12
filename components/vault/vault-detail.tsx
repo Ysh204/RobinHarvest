@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { strategyAbi } from '@/lib/abis/strategy'
+import { clStrategyAbi } from '@/lib/abis/cl-strategy'
 import { saveTransaction } from '@/lib/utils/tx-history'
 import { PerformanceChart } from './performance-chart'
 import { VaultActionPanel } from './vault-action-panel'
@@ -28,7 +29,7 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
     try {
       const hash = await writer.writeContractAsync({
         address: vault.strategy,
-        abi: strategyAbi,
+        abi: vault.isCl ? clStrategyAbi : strategyAbi,
         functionName: actionName,
       } as any)
       saveTransaction({
@@ -60,7 +61,7 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
             <Zap className="size-4 fill-primary" />
           </div>
           <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
-            {vault.isV4 ? 'Uniswap v4 CL Strategy Operations' : 'Automated Strategy Controls'}
+            {vault.isCl ? 'Uniswap v4 CL Strategy Operations' : 'Automated Strategy Controls'}
           </h3>
         </div>
         <a
@@ -74,39 +75,39 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
       </div>
 
       <p className="text-xs text-muted-foreground leading-relaxed">
-        {vault.isV4
-          ? 'Interact directly with the Uniswap v4 Concentrated Liquidity strategy. Trigger automated rebalances to reposition liquidity across optimal tick bounds (Tick Spacing: 60) with EIP-1153 flash accounting, or harvest accrued pool trading fees.'
-          : 'Anyone on the Robinhood testnet can permissionlessly invoke strategy maintenance and reward batch compounding.'}
+        {vault.isCl
+          ? 'Interact with the Uniswap v4 concentrated liquidity strategy. Trigger rebalances or harvest accrued pool trading fees.'
+          : 'Keeper-gated strategy maintenance and reward batch compounding via on-chain access control.'}
       </p>
 
       {/* Uniswap v4 specific parameters grid */}
-      {vault.isV4 && vault.v4Details && (
+      {vault.isCl && vault.clDetails && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 py-3 border-y border-border/20 text-xs">
           <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
             <span className="text-muted-foreground text-[10px] uppercase font-bold">V4 Pool Manager</span>
             <span className="font-mono text-foreground font-semibold text-[11px] truncate">
-              {vault.v4Details.poolManager.slice(0, 6)}...{vault.v4Details.poolManager.slice(-4)}
+              {vault.clDetails.poolManager.slice(0, 6)}...{vault.clDetails.poolManager.slice(-4)}
             </span>
           </div>
           <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
             <span className="text-muted-foreground text-[10px] uppercase font-bold">Position Manager</span>
             <span className="font-mono text-foreground font-semibold text-[11px] truncate">
-              {vault.v4Details.positionManager.slice(0, 6)}...{vault.v4Details.positionManager.slice(-4)}
+              {vault.clDetails.positionManager.slice(0, 6)}...{vault.clDetails.positionManager.slice(-4)}
             </span>
           </div>
           <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
             <span className="text-muted-foreground text-[10px] uppercase font-bold">Pool Fee Tier</span>
-            <span className="font-mono text-primary font-bold text-xs">{vault.v4Details.feeTier}</span>
+            <span className="font-mono text-primary font-bold text-xs">{vault.clDetails.feeTier}</span>
           </div>
           <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
             <span className="text-muted-foreground text-[10px] uppercase font-bold">Tick Spacing</span>
-            <span className="font-mono text-foreground font-bold text-xs">{vault.v4Details.tickSpacing}</span>
+            <span className="font-mono text-foreground font-bold text-xs">{vault.clDetails.tickSpacing}</span>
           </div>
         </div>
       )}
 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
-        {vault.isV4 && (
+        {vault.isCl && (
           <Button
             size="sm"
             onClick={() => handleAction('rebalance')}
@@ -175,7 +176,7 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
                 <span className="px-2.5 py-0.5 rounded-full bg-white/[0.03] border border-border/60 text-[11px] font-mono font-semibold text-muted-foreground">
                   ERC-4626
                 </span>
-                {vault.isV4 && (
+                {vault.isCl && (
                   <span className="px-2.5 py-0.5 rounded-full bg-primary/15 border border-primary/30 text-[11px] font-extrabold text-primary flex items-center gap-1 shadow-xs">
                     <Zap className="size-3 fill-primary" /> Uniswap v4 CL
                   </span>
@@ -208,7 +209,13 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
               className="grid grid-cols-2 gap-3 sm:grid-cols-4"
             >
               {[
-                ['Est. APY', `${snapshot?.apy.toFixed(2) ?? '—'}%`, Gauge],
+                [
+                  'Est. APY',
+                  snapshot?.apyAvailable && snapshot.apy !== undefined
+                    ? `${snapshot.apy.toFixed(2)}%`
+                    : 'Unavailable',
+                  Gauge,
+                ],
                 ['Total assets', isLoading ? 'Loading...' : `${tvl.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${vault.assetSymbol}`, WalletCards],
                 ['Share price', `${snapshot?.pricePerShare?.toFixed(4) ?? '1.0000'} ${vault.assetSymbol}`, Info],
                 ['Risk profile', vault.risk, ShieldCheck],
@@ -236,7 +243,7 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Vault Performance (30D)</h3>
-                  <p className="text-xs text-muted-foreground">Indicative history anchored to current onchain TVL.</p>
+                  <p className="text-xs text-muted-foreground">Illustrative history only — not live protocol APY/TVL.</p>
                 </div>
                 <span className="px-2.5 py-0.5 rounded-md text-[11px] font-mono border border-border/60 bg-white/[0.02] text-muted-foreground font-bold">30D</span>
               </div>

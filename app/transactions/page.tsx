@@ -8,7 +8,6 @@ import {
   Sparkles,
   RefreshCcw,
   ShieldCheck,
-  Droplets,
   Copy,
   Check,
   Activity,
@@ -66,7 +65,7 @@ export default function TransactionsPage() {
       // Category filter
       if (category === 'flows' && !['deposit', 'withdraw', 'mint', 'redeem'].includes(rec.kind)) return false
       if (category === 'strategy' && !['rebalance', 'harvest', 'tend'].includes(rec.kind)) return false
-      if (category === 'approves' && !['approve', 'faucet'].includes(rec.kind)) return false
+      if (category === 'approves' && rec.kind !== 'approve') return false
 
       // Search filter
       if (search.trim()) {
@@ -129,13 +128,6 @@ export default function TransactionsPage() {
           icon: <Activity className="size-4 text-cyan-400" />,
           bg: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
           gradient: 'from-cyan-500/10 via-transparent to-transparent',
-        }
-      case 'faucet':
-        return {
-          label: 'Testnet Faucet Claim',
-          icon: <Droplets className="size-4 text-blue-400" />,
-          bg: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
-          gradient: 'from-blue-500/10 via-transparent to-transparent',
         }
       case 'approve':
         return {
@@ -209,7 +201,7 @@ export default function TransactionsPage() {
               { id: 'all', label: 'All Activity' },
               { id: 'flows', label: 'Capital Flows' },
               { id: 'strategy', label: 'Strategy Ops' },
-              { id: 'approves', label: 'Approvals & Faucet' },
+              { id: 'approves', label: 'Approvals' },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -263,7 +255,7 @@ export default function TransactionsPage() {
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {records.length === 0
-                  ? 'Your wallet interactions on Robinhood Chain Testnet—including faucet claims, token deposits, share redemptions, and Uniswap v4 rebalances—will appear here instantly with full on-chain verifiability.'
+                  ? 'Your wallet interactions on Robinhood Chain—including deposits, share redemptions, and strategy operations—appear here with on-chain verifiability.'
                   : `No transactions matched your active search query "${search}". Try switching tabs or clearing your filters.`}
               </p>
             </div>
@@ -347,14 +339,14 @@ export default function TransactionsPage() {
                         ) : (
                           <div className="flex items-baseline gap-1.5 font-mono">
                             <span className="text-sm sm:text-base font-extrabold tabular text-foreground tracking-tight">
-                              {['deposit', 'mint', 'faucet'].includes(record.kind) ? '+' : ['withdraw', 'redeem'].includes(record.kind) ? '-' : ''} {record.amount}
+                              {['deposit', 'mint'].includes(record.kind) ? '+' : ['withdraw', 'redeem'].includes(record.kind) ? '-' : ''} {record.amount}
                             </span>
                             <span className="text-xs font-bold font-mono text-primary">{record.symbol}</span>
                           </div>
                         )}
 
                         <span className="text-[11px] text-muted-foreground hidden md:block mt-0.5">
-                          {isStrategyOp ? `Yield target: ${record.symbol}` : 'Settled on testnet'}
+                          {isStrategyOp ? `Yield target: ${record.symbol}` : 'Confirmed on-chain'}
                         </span>
                       </div>
 

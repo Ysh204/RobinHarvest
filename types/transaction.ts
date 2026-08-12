@@ -10,7 +10,6 @@ export type TransactionKind =
   | 'rebalance'
   | 'harvest'
   | 'tend'
-  | 'faucet'
 
 export type TransactionStatus = 'pending' | 'confirmed' | 'failed'
 

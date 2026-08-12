@@ -12,6 +12,13 @@ export default function PortfolioPage() {
   const { snapshots, connected } = useVaults()
   const positions = snapshots.filter((item) => (item.shareBalance ?? 0) > 0)
   const total = positions.reduce((sum, item) => sum + (item.shareBalance ?? 0) * (item.pricePerShare ?? 1), 0)
+  const projectedYield = positions.some((item) => item.apyAvailable && item.apy !== undefined)
+    ? positions.reduce(
+        (sum, item) =>
+          sum + ((item.shareBalance ?? 0) * (item.pricePerShare ?? 1)) * ((item.apy ?? 0) / 100),
+        0,
+      )
+    : undefined
 
   if (!connected) {
     return (
@@ -73,10 +80,16 @@ export default function PortfolioPage() {
                 <Sparkles className="size-3.5 text-primary" /> Est. Annual Yield
               </span>
               <strong className="text-2xl sm:text-3xl font-extrabold font-mono text-primary tabular">
-                +{positions.reduce((sum, item) => sum + ((item.shareBalance ?? 0) * (item.pricePerShare ?? 1)) * item.apy / 100, 0).toFixed(2)} INDEX
+                {projectedYield !== undefined
+                  ? `+${projectedYield.toFixed(2)} INDEX`
+                  : 'Unavailable'}
               </strong>
             </div>
-            <p className="text-[11px] text-muted-foreground border-t border-border/30 pt-3.5 font-medium">Based on real-time rolling pool rewards & swap fees.</p>
+            <p className="text-[11px] text-muted-foreground border-t border-border/30 pt-3.5 font-medium">
+              {projectedYield !== undefined
+                ? 'Estimated from on-chain profit unlock rate when available.'
+                : 'APY is not exposed on-chain; yield projection unavailable.'}
+            </p>
           </motion.div>
         </section>
 

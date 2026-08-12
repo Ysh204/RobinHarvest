@@ -8,9 +8,9 @@ import {
 import { createConfig, http } from 'wagmi'
 import { mainnet, sepolia } from 'wagmi/chains'
 import { robinhoodChain } from './chain'
+import { getWalletConnectProjectId, IS_PRODUCTION } from './env'
 
-const walletConnectProjectId =
-  process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? '42e1d8b7ccab1bb7bb19c58b59b15e3b'
+const walletConnectProjectId = getWalletConnectProjectId()
 
 const connectors = connectorsForWallets(
   [
@@ -25,8 +25,10 @@ const connectors = connectorsForWallets(
   }
 )
 
+const appChains = IS_PRODUCTION ? ([robinhoodChain] as const) : ([sepolia, mainnet, robinhoodChain] as const)
+
 export const config = createConfig({
-  chains: [sepolia, mainnet, robinhoodChain],
+  chains: appChains,
   connectors,
   transports: {
     [sepolia.id]: http('https://ethereum-sepolia-rpc.publicnode.com'),
