@@ -1,5 +1,5 @@
 import testnetManifest from './manifest.testnet.json'
-import { getManifestPath, IS_PRODUCTION, IS_STAGING, type DeploymentManifest } from '../env'
+import { getManifestPath, type DeploymentManifest } from '../env'
 
 const MANIFEST_REGISTRY: Record<string, DeploymentManifest> = {
   'deployments/manifest.testnet.json': testnetManifest as DeploymentManifest,
@@ -16,7 +16,8 @@ export function loadDeploymentManifest(): DeploymentManifest {
     )
   }
 
-  if ((IS_PRODUCTION || IS_STAGING) && path.includes('testnet')) {
+  const explicitEnv = process.env.NEXT_PUBLIC_APP_ENV
+  if ((explicitEnv === 'production' || explicitEnv === 'staging') && path.includes('testnet')) {
     throw new Error(
       'Production and staging must not use a testnet deployment manifest. Set NEXT_PUBLIC_DEPLOYMENT_MANIFEST to a production manifest path.',
     )
