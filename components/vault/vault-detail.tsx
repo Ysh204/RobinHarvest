@@ -8,12 +8,18 @@ import { toast } from 'sonner'
 import type { VaultConfig } from '@/config/contracts'
 import { explorerAddressUrl } from '@/config/chain'
 import { useVault } from '@/hooks/use-vaults'
-import { Badge } from '@/components/ui/badge'
+import { AnimatedNumber } from '@/components/motion/animated-number'
+import { ClRangeVisual } from '@/components/motion/cl-range-visual'
+import { CompoundingVisual } from '@/components/motion/compounding-visual'
+import { GrowthPortfolioVisual } from '@/components/motion/growth-portfolio-visual'
+import { VaultStrategyVisual } from '@/components/motion/vault-strategy-visual'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { strategyAbi } from '@/lib/abis/strategy'
 import { clStrategyAbi } from '@/lib/abis/cl-strategy'
 import { saveTransaction } from '@/lib/utils/tx-history'
+import { getVaultKind } from '@/lib/utils/vault-kind'
+import { staggerContainer, staggerItem } from '@/lib/constants/motion'
 import { PerformanceChart } from './performance-chart'
 import { VaultActionPanel } from './vault-action-panel'
 
@@ -31,7 +37,7 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
         address: vault.strategy,
         abi: vault.isCl ? clStrategyAbi : strategyAbi,
         functionName: actionName,
-      } as any)
+      } as Parameters<typeof writer.writeContractAsync>[0])
       saveTransaction({
         hash,
         kind: actionName,
@@ -43,22 +49,20 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
       toast.success(`Strategy ${actionName.toUpperCase()} submitted to network`)
     } catch (err) {
       toast.error(`Failed to execute ${actionName}`, {
-        description: err instanceof Error ? err.message.split('\n')[0] : 'Transaction rejected or reverted.'
+        description: err instanceof Error ? err.message.split('\n')[0] : 'Transaction rejected or reverted.',
       })
     }
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.15 }}
-      className="flex flex-col gap-4 p-5 rounded-xl bg-card/50 border border-border/60 backdrop-blur-md shadow-xs hover:border-primary/30 transition-colors"
+      variants={staggerItem}
+      className="flex flex-col gap-4 p-5 rounded-2xl bg-card/50 border border-border/50 backdrop-blur-md shadow-sm hover:border-primary/20 transition-colors"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/30 pb-3">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
-            <Zap className="size-4 fill-primary" />
+          <div className="p-1.5 rounded-xl bg-primary/8 text-primary">
+            <Zap className="size-4" />
           </div>
           <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
             {vault.isCl ? 'Uniswap v4 CL Strategy Operations' : 'Automated Strategy Controls'}
@@ -80,29 +84,19 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
           : 'Keeper-gated strategy maintenance and reward batch compounding via on-chain access control.'}
       </p>
 
-      {/* Uniswap v4 specific parameters grid */}
       {vault.isCl && vault.clDetails && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 py-3 border-y border-border/20 text-xs">
-          <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
-            <span className="text-muted-foreground text-[10px] uppercase font-bold">V4 Pool Manager</span>
-            <span className="font-mono text-foreground font-semibold text-[11px] truncate">
-              {vault.clDetails.poolManager.slice(0, 6)}...{vault.clDetails.poolManager.slice(-4)}
-            </span>
-          </div>
-          <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
-            <span className="text-muted-foreground text-[10px] uppercase font-bold">Position Manager</span>
-            <span className="font-mono text-foreground font-semibold text-[11px] truncate">
-              {vault.clDetails.positionManager.slice(0, 6)}...{vault.clDetails.positionManager.slice(-4)}
-            </span>
-          </div>
-          <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
-            <span className="text-muted-foreground text-[10px] uppercase font-bold">Pool Fee Tier</span>
-            <span className="font-mono text-primary font-bold text-xs">{vault.clDetails.feeTier}</span>
-          </div>
-          <div className="flex flex-col gap-1 p-2.5 rounded-lg bg-white/[0.015] border border-border/30">
-            <span className="text-muted-foreground text-[10px] uppercase font-bold">Tick Spacing</span>
-            <span className="font-mono text-foreground font-bold text-xs">{vault.clDetails.tickSpacing}</span>
-          </div>
+          {[
+            ['V4 Pool Manager', `${vault.clDetails.poolManager.slice(0, 6)}...${vault.clDetails.poolManager.slice(-4)}`],
+            ['Position Manager', `${vault.clDetails.positionManager.slice(0, 6)}...${vault.clDetails.positionManager.slice(-4)}`],
+            ['Pool Fee Tier', vault.clDetails.feeTier],
+            ['Tick Spacing', String(vault.clDetails.tickSpacing)],
+          ].map(([label, value]) => (
+            <div key={label} className="flex flex-col gap-1 p-2.5 rounded-xl bg-white/[0.015] border border-border/30">
+              <span className="text-muted-foreground text-[10px] uppercase font-bold">{label}</span>
+              <span className="font-mono text-foreground font-semibold text-[11px] truncate">{value}</span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -112,9 +106,9 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
             size="sm"
             onClick={() => handleAction('rebalance')}
             disabled={writer.isPending}
-            className="text-xs h-9 px-4 gap-1.5 font-bold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90"
+            className="text-xs h-9 px-4 gap-1.5 font-bold"
           >
-            <Zap className="size-3.5 fill-current" /> Execute v4 Rebalance
+            <Zap className="size-3.5" /> Execute v4 Rebalance
           </Button>
         )}
         <Button
@@ -122,9 +116,9 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
           size="sm"
           onClick={() => handleAction('harvest')}
           disabled={writer.isPending}
-          className="text-xs h-9 px-4 gap-1.5 border-border/80 bg-white/[0.02] hover:bg-white/[0.06] font-semibold"
+          className="text-xs h-9 px-4 gap-1.5 font-semibold"
         >
-          🌾 Harvest & Compound
+          Harvest & Compound
         </Button>
         <Button
           variant="ghost"
@@ -133,7 +127,7 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
           disabled={writer.isPending}
           className="text-xs h-9 px-3 text-muted-foreground hover:text-foreground font-medium sm:ml-auto"
         >
-          🔧 Tend Position
+          Tend Position
         </Button>
       </div>
     </motion.div>
@@ -145,117 +139,195 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
   const tvl = snapshot?.totalAssets ?? 0
   const cap = snapshot?.depositCap ?? 0
   const capacity = cap ? Math.min((tvl / cap) * 100, 100) : 0
+  const kind = getVaultKind(vault)
+
+  const stats = [
+    {
+      label: 'Est. APY',
+      value:
+        snapshot?.apyAvailable && snapshot.apy !== undefined
+          ? `${snapshot.apy.toFixed(2)}%`
+          : 'Unavailable',
+      icon: Gauge,
+      numeric: false,
+    },
+    {
+      label: 'Total assets',
+      value: isLoading ? null : tvl,
+      icon: WalletCards,
+      numeric: true,
+      suffix: ` ${vault.assetSymbol}`,
+    },
+    {
+      label: 'Share price',
+      value: snapshot?.pricePerShare ?? 1,
+      icon: Info,
+      numeric: true,
+      format: (n: number) => n.toFixed(4),
+      suffix: ` ${vault.assetSymbol}`,
+    },
+    {
+      label: 'Risk profile',
+      value: vault.risk,
+      icon: ShieldCheck,
+      numeric: false,
+    },
+  ]
 
   return (
     <div className="flex flex-col w-full">
-      {/* Full-Width Vault Header Banner */}
-      <section className="w-full border-b border-border/40 bg-gradient-to-b from-white/[0.03] to-transparent px-4 sm:px-6 md:px-12 lg:px-16 py-8 md:py-10">
-        <div className="flex flex-col gap-4 w-full">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors w-fit">
+      <section className="relative w-full border-b border-border/40 bg-gradient-to-b from-white/[0.02] to-transparent px-4 sm:px-6 md:px-12 lg:px-16 py-10 md:py-12 overflow-hidden">
+        <VaultStrategyVisual kind={kind} className="absolute right-8 top-8 hidden w-48 opacity-30 lg:block" />
+
+        <div className="relative flex flex-col gap-5 w-full">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors w-fit"
+          >
             <ArrowLeft className="size-3.5" /> All Strategy Vaults
           </Link>
 
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            layoutId={`vault-card-${vault.address}`}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between w-full"
           >
-            <div className="flex flex-col gap-2.5 max-w-3xl">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-border/60 text-[11px] font-bold text-foreground shadow-xs">
-                  {snapshot?.paused ? 'Paused' : 'Active'}
-                </span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                  vault.risk === 'low' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                  vault.risk === 'medium' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                  'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                }`}>
-                  {vault.risk.toUpperCase()} RISK
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-white/[0.03] border border-border/60 text-[11px] font-mono font-semibold text-muted-foreground">
-                  ERC-4626
-                </span>
-                {vault.isCl && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-primary/15 border border-primary/30 text-[11px] font-extrabold text-primary flex items-center gap-1 shadow-xs">
-                    <Zap className="size-3 fill-primary" /> Uniswap v4 CL
-                  </span>
-                )}
-              </div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground">{vault.name}</h1>
-              <p className="text-xs sm:text-sm leading-relaxed text-muted-foreground">{vault.description}</p>
+            <div className="flex flex-col gap-3 max-w-3xl">
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="flex flex-wrap items-center gap-2"
+              >
+                {[
+                  snapshot?.paused ? 'Paused' : 'Active',
+                  `${vault.risk.toUpperCase()} RISK`,
+                  'ERC-4626',
+                  ...(vault.isCl ? ['Uniswap v4 CL'] : []),
+                ].map((badge) => (
+                  <motion.span
+                    key={badge}
+                    variants={staggerItem}
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                      badge.includes('CL')
+                        ? 'bg-primary/10 text-primary border-primary/20'
+                        : badge === 'Active'
+                          ? 'bg-white/[0.03] border-border/50 text-foreground'
+                          : 'bg-white/[0.02] border-border/40 text-muted-foreground'
+                    }`}
+                  >
+                    {badge}
+                  </motion.span>
+                ))}
+              </motion.div>
+              <motion.h1
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground"
+              >
+                {vault.name}
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.18 }}
+                className="text-sm leading-relaxed text-muted-foreground"
+              >
+                {vault.description}
+              </motion.p>
             </div>
-            <a
+            <motion.a
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.15 }}
               href={explorerAddressUrl(vault.address)}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-muted-foreground hover:text-foreground border border-border/60 rounded-xl px-4 py-2.5 bg-card/50 hover:border-primary/30 transition-all w-fit shadow-xs shrink-0 mt-1 lg:mt-0"
+              className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-muted-foreground hover:text-foreground border border-border/50 rounded-2xl px-4 py-2.5 bg-card/40 hover:border-primary/20 transition-all w-fit shrink-0"
             >
-              Vault: {vault.address.slice(0, 8)}...{vault.address.slice(-6)} <ExternalLink className="size-3 text-primary" />
-            </a>
+              Vault: {vault.address.slice(0, 8)}...{vault.address.slice(-6)}{' '}
+              <ExternalLink className="size-3 text-primary" />
+            </motion.a>
           </motion.div>
         </div>
       </section>
 
-      {/* Centered Compact Vault Content Area */}
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 py-8 md:py-10">
         <div className="grid gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="flex min-w-0 flex-col gap-6 sm:gap-8">
-            {/* Executive Stats Row */}
-            <motion.section
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              className="grid grid-cols-2 gap-3 sm:grid-cols-4"
-            >
-              {[
-                [
-                  'Est. APY',
-                  snapshot?.apyAvailable && snapshot.apy !== undefined
-                    ? `${snapshot.apy.toFixed(2)}%`
-                    : 'Unavailable',
-                  Gauge,
-                ],
-                ['Total assets', isLoading ? 'Loading...' : `${tvl.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${vault.assetSymbol}`, WalletCards],
-                ['Share price', `${snapshot?.pricePerShare?.toFixed(4) ?? '1.0000'} ${vault.assetSymbol}`, Info],
-                ['Risk profile', vault.risk, ShieldCheck],
-              ].map(([label, value, Icon]) => (
-                <div key={label as string} className="p-4 rounded-xl border border-border/60 bg-card/40 backdrop-blur-sm flex flex-col gap-1.5 hover:border-primary/30 transition-colors shadow-xs">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="flex min-w-0 flex-col gap-6 sm:gap-8"
+          >
+            {/* Stats row */}
+            <motion.section variants={staggerItem} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {stats.map(({ label, value, icon: Icon, numeric, format, suffix }) => (
+                <div
+                  key={label}
+                  className="p-4 rounded-2xl border border-border/50 bg-card/40 backdrop-blur-sm flex flex-col gap-1.5 hover:border-primary/20 transition-colors"
+                >
                   <div className="flex items-center justify-between text-muted-foreground">
-                    <span className="text-[11px] uppercase font-bold tracking-wider">{label as string}</span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider">{label}</span>
                     <Icon className="size-3.5 text-primary" aria-hidden />
                   </div>
-                  <strong className="text-sm sm:text-base font-extrabold text-foreground font-mono tabular capitalize">{value as string}</strong>
+                  <strong className="text-sm sm:text-base font-extrabold text-foreground font-mono tabular capitalize">
+                    {numeric && typeof value === 'number' ? (
+                      <>
+                        <AnimatedNumber
+                          value={value}
+                          format={format ?? ((n) => n.toLocaleString(undefined, { maximumFractionDigits: 2 }))}
+                          highlightOnChange
+                        />
+                        {suffix}
+                      </>
+                    ) : value === null ? (
+                      'Loading...'
+                    ) : (
+                      String(value)
+                    )}
+                  </strong>
                 </div>
               ))}
             </motion.section>
 
-            {/* Strategy Operations Panel with Uniswap v4 buttons */}
+            {/* Strategy-specific visuals */}
+            {kind === 'cl' && <motion.div variants={staggerItem}><ClRangeVisual /></motion.div>}
+            {kind === 'growth' && (
+              <motion.div variants={staggerItem}>
+                <GrowthPortfolioVisual assetSymbol={vault.assetSymbol} />
+              </motion.div>
+            )}
+            {kind === 'core' && (
+              <motion.div variants={staggerItem} className="rounded-2xl border border-border/40 bg-card/20 p-4">
+                <CompoundingVisual />
+              </motion.div>
+            )}
+
             <StrategyControls vault={vault} />
 
-            {/* Performance Chart */}
             <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
-              className="p-5 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm flex flex-col gap-4 shadow-xs"
+              variants={staggerItem}
+              className="p-5 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm flex flex-col gap-4"
             >
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Vault Performance (30D)</h3>
                   <p className="text-xs text-muted-foreground">Illustrative history only — not live protocol APY/TVL.</p>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-md text-[11px] font-mono border border-border/60 bg-white/[0.02] text-muted-foreground font-bold">30D</span>
+                <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-mono border border-border/50 bg-white/[0.02] text-muted-foreground font-bold">
+                  30D
+                </span>
               </div>
               <PerformanceChart address={vault.address} currentTvl={tvl} />
             </motion.div>
 
-            {/* Capacity & Strategy Info */}
             <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.25 }}
-              className="p-5 rounded-xl border border-border/60 bg-card/50 backdrop-blur-sm flex flex-col gap-5 shadow-xs"
+              variants={staggerItem}
+              className="p-5 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm flex flex-col gap-5"
             >
               <div className="flex flex-col gap-1">
                 <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Capacity & Architecture</h3>
@@ -264,7 +336,9 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-4 text-xs">
                   <span className="text-muted-foreground font-semibold">Capacity used</span>
-                  <span className="tabular font-mono text-foreground font-bold">{cap ? `${capacity.toFixed(1)}%` : 'Unlimited / No Cap Data'}</span>
+                  <span className="tabular font-mono text-foreground font-bold">
+                    {cap ? `${capacity.toFixed(1)}%` : 'Unlimited / No Cap Data'}
+                  </span>
                 </div>
                 <Progress value={capacity} className="h-2" />
               </div>
@@ -273,21 +347,20 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
                   ['Strategy', vault.strategyLabel],
                   ['Underlying Asset', vault.assetSymbol],
                   ['Protocol Integration', vault.protocolLabel || 'Index Finance'],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-lg border border-border/40 bg-white/[0.015] p-3 flex flex-col gap-1">
+                ].map(([label, val]) => (
+                  <div key={label} className="rounded-xl border border-border/40 bg-white/[0.015] p-3 flex flex-col gap-1">
                     <p className="text-[10px] uppercase font-bold text-muted-foreground">{label}</p>
-                    <p className="font-semibold text-xs text-foreground truncate">{value}</p>
+                    <p className="font-semibold text-xs text-foreground truncate">{val}</p>
                   </div>
                 ))}
               </div>
             </motion.div>
-          </div>
+          </motion.div>
 
-          {/* Sticky Action Panel (Deposit/Withdraw) */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.45, delay: 0.2 }}
             className="lg:sticky lg:top-20 h-fit"
           >
             <VaultActionPanel vault={vault} paused={snapshot?.paused} />
@@ -297,4 +370,3 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
     </div>
   )
 }
-

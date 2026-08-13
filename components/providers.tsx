@@ -29,8 +29,8 @@ function Web3Providers({ children }: { children: ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider
           theme={darkTheme({
-            accentColor: 'oklch(0.85 0.23 155)',
-            accentColorForeground: 'oklch(0.17 0.02 160)',
+            accentColor: 'oklch(0.78 0.14 165)',
+            accentColorForeground: 'oklch(0.14 0.02 165)',
             borderRadius: 'large',
           })}
           appInfo={{ appName: 'Robin Harvest' }}

@@ -1,13 +1,10 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useChainStatus } from '@/hooks/use-chain-status'
 
-/**
- * Compact live chain indicator: block height + connection health.
- * Rendered in the navbar on md+ screens.
- */
 export function WalletStatus() {
   const { blockNumber, isStalled } = useChainStatus()
 
@@ -18,13 +15,13 @@ export function WalletStatus() {
   return (
     <Tooltip>
       <TooltipTrigger
-        render={<Badge variant="outline" className="tabular hidden gap-1.5 md:inline-flex" />}
+        render={<Badge variant="outline" className="tabular hidden gap-1.5 md:inline-flex rounded-lg" />}
       >
-        <span
+        <motion.span
           aria-hidden
-          className={
-            isStalled ? 'size-1.5 rounded-full bg-warning' : 'size-1.5 rounded-full bg-primary'
-          }
+          className={isStalled ? 'size-1.5 rounded-full bg-warning' : 'size-1.5 rounded-full bg-primary'}
+          animate={isStalled ? undefined : { opacity: [1, 0.4, 1] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
         />
         <span className="sr-only">{isStalled ? 'Connection degraded, ' : 'Live, '}</span>
         {blockNumber.toString()}

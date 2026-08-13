@@ -13,6 +13,22 @@ export const softSpring: Transition = {
   damping: 24,
 }
 
+export const gentleSpring: Transition = {
+  type: 'spring',
+  stiffness: 120,
+  damping: 20,
+}
+
+export const easeOut: Transition = {
+  duration: 0.4,
+  ease: [0.22, 1, 0.36, 1],
+}
+
+export const microTransition: Transition = {
+  duration: 0.2,
+  ease: [0.22, 1, 0.36, 1],
+}
+
 export const pageVariants: Variants = {
   hidden: { opacity: 0, y: 12 },
   visible: {
@@ -24,12 +40,27 @@ export const pageVariants: Variants = {
 
 export const staggerContainer: Variants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
+  visible: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+}
+
+export const staggerContainerFast: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } },
 }
 
 export const staggerItem: Variants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0, transition: softSpring },
+}
+
+export const fadeUpItem: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: easeOut },
+}
+
+export const scaleInItem: Variants = {
+  hidden: { opacity: 0, scale: 0.96 },
+  visible: { opacity: 1, scale: 1, transition: softSpring },
 }
 
 export const modalVariants: Variants = {
@@ -48,4 +79,14 @@ export const fadeVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.2 } },
   exit: { opacity: 0, transition: { duration: 0.15 } },
+}
+
+export const cardHover = {
+  rest: { y: 0, scale: 1 },
+  hover: { y: -4, scale: 1.005, transition: microTransition },
+}
+
+export const pressScale = {
+  whileTap: { scale: 0.98 },
+  transition: microTransition,
 }
