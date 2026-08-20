@@ -5,11 +5,8 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { AnimatedNumber } from '@/components/motion/animated-number'
 import { PointerCard } from '@/components/motion/pointer-card'
-import { VaultStrategyVisual } from '@/components/motion/vault-strategy-visual'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { VaultSnapshot } from '@/hooks/use-vaults'
-import { getVaultKind } from '@/lib/utils/vault-kind'
 
 const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 })
 
@@ -21,15 +18,11 @@ interface VaultCardProps {
 
 export function VaultCard({ item, loading, index }: VaultCardProps) {
   const { vault, totalAssets, apy, apyAvailable } = item
-  const kind = getVaultKind(vault)
   const apyLabel = apyAvailable && apy !== undefined ? `${apy.toFixed(2)}%` : 'Unavailable'
 
   return (
     <PointerCard delay={index * 0.08} layoutId={`vault-card-${vault.address}`}>
-      <div className="flex flex-col gap-4 p-5">
-        {/* Strategy visual */}
-        <VaultStrategyVisual kind={kind} />
-
+      <div className="flex flex-col gap-5 p-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-1 min-w-0">
@@ -51,7 +44,7 @@ export function VaultCard({ item, loading, index }: VaultCardProps) {
             <p className="text-xs text-muted-foreground line-clamp-1">{vault.strategyLabel}</p>
           </div>
           <span
-            className={`shrink-0 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+            className={`shrink-0 inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
               vault.risk === 'low'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                 : vault.risk === 'medium'
@@ -64,7 +57,7 @@ export function VaultCard({ item, loading, index }: VaultCardProps) {
         </div>
 
         {/* Metrics */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-white/[0.015] border border-border/30">
           <div className="flex flex-col gap-0.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               Est. APY
@@ -99,14 +92,12 @@ export function VaultCard({ item, loading, index }: VaultCardProps) {
               {vault.protocolLabel || 'Index Finance'} · {vault.assetSymbol}
             </span>
           </div>
-          <Link href={`/vaults/${vault.address}`}>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs font-medium px-3 gap-1 border-border/80 bg-white/[0.02] hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200"
-            >
-              Manage <ArrowUpRight className="size-3" />
-            </Button>
+          <Link
+            href={`/vaults/${vault.address}`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-border/40 text-xs font-bold text-foreground hover:bg-primary/10 hover:border-primary/30 hover:text-primary transition-all group/btn shrink-0"
+          >
+            Manage
+            <ArrowUpRight className="size-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
           </Link>
         </div>
       </div>

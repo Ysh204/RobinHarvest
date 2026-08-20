@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowLeft, ExternalLink, Gauge, Info, ShieldCheck, WalletCards, Zap } from 'lucide-react'
+import { ExternalLink, Gauge, Info, ShieldCheck, WalletCards, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useAccount, useWriteContract } from 'wagmi'
@@ -9,19 +9,14 @@ import type { VaultConfig } from '@/config/contracts'
 import { explorerAddressUrl } from '@/config/chain'
 import { useVault } from '@/hooks/use-vaults'
 import { AnimatedNumber } from '@/components/motion/animated-number'
-import { ClRangeVisual } from '@/components/motion/cl-range-visual'
-import { CompoundingVisual } from '@/components/motion/compounding-visual'
-import { GrowthPortfolioVisual } from '@/components/motion/growth-portfolio-visual'
-import { VaultStrategyVisual } from '@/components/motion/vault-strategy-visual'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import { strategyAbi } from '@/lib/abis/strategy'
 import { clStrategyAbi } from '@/lib/abis/cl-strategy'
 import { saveTransaction } from '@/lib/utils/tx-history'
-import { getVaultKind } from '@/lib/utils/vault-kind'
 import { staggerContainer, staggerItem } from '@/lib/constants/motion'
 import { PerformanceChart } from './performance-chart'
 import { VaultActionPanel } from './vault-action-panel'
+import { VaultInfoAccordion } from './vault-info-accordion'
 
 function StrategyControls({ vault }: { vault: VaultConfig }) {
   const { isConnected } = useAccount()
@@ -61,7 +56,7 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/30 pb-3">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-xl bg-primary/8 text-primary">
+          <div className="p-1.5 rounded-xl bg-primary/10 text-primary">
             <Zap className="size-4" />
           </div>
           <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
@@ -134,14 +129,9 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
   )
 }
 
-import { VaultInfoAccordion } from './vault-info-accordion'
-
 export function VaultDetail({ vault }: { vault: VaultConfig }) {
   const { snapshot, isLoading } = useVault(vault.address)
   const tvl = snapshot?.totalAssets ?? 0
-  const cap = snapshot?.depositCap ?? 0
-  const capacity = cap ? Math.min((tvl / cap) * 100, 100) : 0
-  const kind = getVaultKind(vault)
 
   const stats = [
     {
@@ -183,8 +173,6 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
   return (
     <div className="flex flex-col w-full">
       <section className="relative w-full border-b border-border/40 bg-gradient-to-b from-white/[0.02] to-transparent px-4 sm:px-6 md:px-12 lg:px-16 py-8 md:py-10 overflow-hidden">
-        <VaultStrategyVisual kind={kind} className="absolute right-8 top-8 hidden w-48 opacity-25 lg:block pointer-events-none" />
-
         <div className="relative flex flex-col gap-6 w-full max-w-6xl mx-auto">
           {/* Breadcrumbs */}
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
@@ -322,19 +310,6 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
               </div>
               <PerformanceChart address={vault.address} currentTvl={tvl} />
             </motion.div>
-
-            {/* Strategy-specific animated visuals */}
-            {kind === 'cl' && <motion.div variants={staggerItem}><ClRangeVisual /></motion.div>}
-            {kind === 'growth' && (
-              <motion.div variants={staggerItem}>
-                <GrowthPortfolioVisual assetSymbol={vault.assetSymbol} />
-              </motion.div>
-            )}
-            {kind === 'core' && (
-              <motion.div variants={staggerItem} className="rounded-2xl border border-border/40 bg-card/20 p-4">
-                <CompoundingVisual />
-              </motion.div>
-            )}
 
             {/* Keeper & Automation Controls */}
             <StrategyControls vault={vault} />
