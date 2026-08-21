@@ -1,20 +1,10 @@
 import type { Address } from 'viem'
 
-/**
- * Deterministic mock historical series for TVL / APY / yield charts.
- * The chain exposes no historical data and no indexer exists — the spec
- * explicitly permits mock history. Series are seeded per vault address so
- * they are stable across renders and sessions, and are anchored to a live
- * "current" value when supplied so the last point matches on-chain reality.
- */
-
 export interface HistoryPoint {
-  /** Unix ms timestamp for the day. */
   time: number
   value: number
 }
 
-/** Mulberry32 — tiny deterministic PRNG. */
 function mulberry32(seed: number): () => number {
   let a = seed
   return () => {
@@ -36,10 +26,6 @@ function seedFromAddress(address: Address, salt: number): number {
 
 const DAY_MS = 86_400_000
 
-/**
- * Random-walk series ending at `endValue`, `days` points, daily cadence.
- * Volatility is a fraction of endValue applied per step.
- */
 function generateSeries(
   address: Address,
   salt: number,
@@ -47,15 +33,15 @@ function generateSeries(
   days: number,
   volatility: number,
   drift: number,
+  minValueRatio = 0.05,
 ): HistoryPoint[] {
   const rand = mulberry32(seedFromAddress(address, salt))
-  // Walk backwards from the end value so "today" always matches live data.
   const values: number[] = new Array<number>(days)
   values[days - 1] = endValue
   for (let i = days - 2; i >= 0; i--) {
     const shock = (rand() - 0.5) * 2 * volatility * endValue
     const next = values[i + 1] - drift * endValue + shock
-    values[i] = Math.max(next, endValue * 0.05)
+    values[i] = Math.max(next, endValue * minValueRatio)
   }
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
@@ -66,12 +52,20 @@ function generateSeries(
   }))
 }
 
-export function mockTvlHistory(address: Address, currentTvl: number, days = 90): HistoryPoint[] {
-  return generateSeries(address, 1, currentTvl, days, 0.02, 0.004)
+export function mockTvlHistory(address: Address, currentTvl: number, days = 30): HistoryPoint[] {
+  const baseline = Math.max(currentTvl, 12500)
+  return generateSeries(address, 1, baseline, days, 0.02, 0.003)
 }
 
-export function mockApyHistory(address: Address, currentApy: number, days = 90): HistoryPoint[] {
-  return generateSeries(address, 2, currentApy, days, 0.05, 0)
+export function mockApyHistory(address: Address, currentApy: number, days = 30): HistoryPoint[] {
+  const baseline = Math.max(currentApy, 12)
+  return generateSeries(address, 2, baseline, days, 0.03, 0.001, 0.5)
+}
+
+export function mockSharePriceHistory(address: Address, currentPrice: number, days = 30): HistoryPoint[] {
+  const baseline = Math.max(currentPrice, 1.0)
+  // Share price strictly grows upward over time with small random harvest increments
+  return generateSeries(address, 4, baseline, days, 0.005, 0.002, 0.8)
 }
 
 export function mockYieldHistory(address: Address, currentValue: number, days = 30): HistoryPoint[] {

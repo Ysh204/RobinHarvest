@@ -132,6 +132,9 @@ function StrategyControls({ vault }: { vault: VaultConfig }) {
 export function VaultDetail({ vault }: { vault: VaultConfig }) {
   const { snapshot, isLoading } = useVault(vault.address)
   const tvl = snapshot?.totalAssets ?? 0
+  const defaultApy =
+    vault.id === 'rhindex-core' ? 18.4 : vault.id === 'rhindex-growth' ? 32.15 : 68.5
+  const currentPrice = snapshot?.pricePerShare ?? 1.042
 
   const stats = [
     {
@@ -139,11 +142,7 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
       value:
         snapshot?.apyAvailable && snapshot.apy !== undefined
           ? `${snapshot.apy.toFixed(2)}%`
-          : vault.id === 'rhindex-core'
-            ? '18.40%'
-            : vault.id === 'rhindex-growth'
-              ? '32.15%'
-              : '68.50%',
+          : `${defaultApy.toFixed(2)}%`,
       icon: Gauge,
       numeric: false,
     },
@@ -156,7 +155,7 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
     },
     {
       label: 'Share price',
-      value: snapshot?.pricePerShare ?? 1,
+      value: currentPrice,
       icon: Info,
       numeric: true,
       format: (n: number) => n.toFixed(4),
@@ -294,27 +293,25 @@ export function VaultDetail({ vault }: { vault: VaultConfig }) {
               ))}
             </motion.section>
 
-            {/* Interactive Performance Chart */}
+            {/* Interactive Multi-Timeframe Performance Chart */}
             <motion.div
               variants={staggerItem}
-              className="p-5 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm flex flex-col gap-4"
+              className="p-5 sm:p-6 rounded-3xl border border-border/50 bg-card/50 backdrop-blur-sm flex flex-col gap-4 shadow-sm"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wide">Historical Yield & APY</h3>
-                  <p className="text-xs text-muted-foreground">Interactive 30-day performance projection and compounding curve.</p>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-lg text-[11px] font-mono border border-border/50 bg-white/[0.02] text-muted-foreground font-bold">
-                  30D Live
-                </span>
-              </div>
-              <PerformanceChart address={vault.address} currentTvl={tvl} />
+              <PerformanceChart
+                address={vault.address}
+                currentTvl={tvl}
+                defaultApy={defaultApy}
+                currentSharePrice={currentPrice}
+                assetSymbol={vault.assetSymbol}
+                shareSymbol={vault.shareSymbol}
+              />
             </motion.div>
 
             {/* Keeper & Automation Controls */}
             <StrategyControls vault={vault} />
 
-            {/* Rich Accordion Sections: Vault Info, Strategy Engine, Risk Score, Strategy Details, More Info */}
+            {/* Rich Accordion Sections */}
             <motion.div variants={staggerItem}>
               <VaultInfoAccordion vault={vault} />
             </motion.div>
