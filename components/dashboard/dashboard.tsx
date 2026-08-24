@@ -4,12 +4,12 @@ import { CircleDollarSign, Layers3, Radio, ShieldCheck, Sparkles, Zap } from 'lu
 import { motion } from 'framer-motion'
 import { AnimatedNumber } from '@/components/motion/animated-number'
 import { CapitalFlowVisual } from '@/components/motion/capital-flow-visual'
-import { CompoundingVisual } from '@/components/motion/compounding-visual'
 import { ViewportItem, ViewportSection } from '@/components/motion/viewport-section'
 import { VaultCard } from '@/components/vault/vault-card'
 import { Button } from '@/components/ui/button'
 import { useVaults } from '@/hooks/use-vaults'
 import { staggerContainer, staggerItem } from '@/lib/constants/motion'
+import { LiveActivityFeed } from './live-activity-feed'
 
 const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 })
 
@@ -120,6 +120,11 @@ export function Dashboard() {
           </motion.div>
         </section>
 
+        {/* Live Protocol Activity Feed (Heartbeat) */}
+        <section id="activity-feed">
+          <LiveActivityFeed />
+        </section>
+
         {/* Feature highlights with scroll reveal */}
         <ViewportSection className="grid gap-4 grid-cols-1 md:grid-cols-3 pt-2">
           {[
@@ -143,18 +148,6 @@ export function Dashboard() {
               </motion.div>
             </ViewportItem>
           ))}
-        </ViewportSection>
-
-        {/* Compounding concept visual */}
-        <ViewportSection className="rounded-2xl border border-border/40 bg-card/20 p-6 flex flex-col sm:flex-row items-center gap-6">
-          <ViewportItem className="flex-1">
-            <h3 className="text-sm font-bold text-foreground mb-1">How Capital Compounds</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Deposited assets are deployed into strategies, earn yield, and are automatically
-              reinvested to grow your position over time.
-            </p>
-          </ViewportItem>
-          <CompoundingVisual className="flex-1" />
         </ViewportSection>
       </div>
     </div>
